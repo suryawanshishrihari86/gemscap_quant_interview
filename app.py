@@ -16,7 +16,7 @@ from analytics import (
 )
 
 st.set_page_config(layout="wide")
-st.title("Real-Time Pairs Trading Analytics (Interview-Ready)")
+st.title("Real-Time Pairs Trading Analytics")
 
 # ======================
 # Configuration
@@ -39,17 +39,18 @@ z_threshold = st.sidebar.slider("Z-Score Alert Threshold", 1.0, 3.0, 2.0)
 rolling_window = st.sidebar.slider("Rolling Window", 20, 100, 50)
 corr_window = st.sidebar.slider("Correlation Window", 10, 60, 30)
 
+# Allow some time for data collection
 time.sleep(3)
 
 btc = pd.DataFrame(ingestor.data["BTCUSDT"])
 eth = pd.DataFrame(ingestor.data["ETHUSDT"])
 
 if len(btc) < 50 or len(eth) < 50:
-    st.warning("Collecting live data...")
+    st.warning("Collecting live market data...")
     st.stop()
 
 # ======================
-# Time Alignment (CRITICAL)
+# Time Alignment
 # ======================
 btc = btc.sort_values("time")
 eth = eth.sort_values("time")
@@ -84,7 +85,7 @@ df["rolling_corr"] = (
 adf_result = adf_test(df["spread"])
 
 # ======================
-# Normalized Prices (VISUAL FIX)
+# Normalized Prices
 # ======================
 df["btc_norm"] = df["price_btc"] / df["price_btc"].iloc[0]
 df["eth_norm"] = df["price_eth"] / df["price_eth"].iloc[0]
@@ -113,23 +114,27 @@ with col2:
 # ======================
 st.subheader("Rolling Correlation")
 fig3 = go.Figure()
-fig3.add_scatter(x=df["time"], y=df["rolling_corr"], name="Correlation (BTC vs ETH)")
+fig3.add_scatter(
+    x=df["time"],
+    y=df["rolling_corr"],
+    name="BTC-ETH Correlation"
+)
 st.plotly_chart(fig3, use_container_width=True)
 
 # ======================
-# Stats & Interpretation
+# Statistical Summary
 # ======================
 st.subheader("Statistical Summary")
 st.write(f"**Hedge Ratio (OLS):** {hedge:.4f}")
-
 st.write(f"**ADF p-value:** {adf_result['p-value']:.4f}")
+
 if adf_result["Stationary"]:
     st.success("Spread appears mean-reverting (Stationary).")
 else:
-    st.warning("Spread is not stationary in this short window.")
+    st.warning("Spread is not stationary in this time window.")
 
 latest_z = df["zscore"].iloc[-1]
 if abs(latest_z) > z_threshold:
-    st.error(f"🚨 Z-Score Alert Triggered: {latest_z:.2f}")
+    st.error(f"Z-Score Alert Triggered: {latest_z:.2f}")
 else:
     st.success(f"Z-Score Normal: {latest_z:.2f}")
